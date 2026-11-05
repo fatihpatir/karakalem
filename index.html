@@ -3,339 +3,164 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Karakalem Atölyesi - Fatih PATIR</title>
+  <title>Karakalem - Fatih PATIR</title>
   <link rel="stylesheet" href="style.css">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#f59e0b">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="app-container">
-    <!-- Üst Menü (Top Bar) -->
-    <header class="header-bar">
-      <div class="brand-wrapper">
-        <div class="brand-logo">✏️</div>
-        <div class="brand-text">
-          <h1>Karakalem Atölyesi</h1>
-          <a href="https://fatihpatir.github.io/web" target="_blank" rel="noopener noreferrer" class="brand-author-tag">
-            <span>Sanatçı & Geliştirici:</span> <strong>Fatih PATIR</strong> ↗
-          </a>
-        </div>
+  <div class="app-wrapper">
+    <!-- Üst Çubuk -->
+    <header class="app-header">
+      <div class="app-title-group">
+        <span class="app-icon">✏️</span>
+        <span class="app-name">Karakalem</span>
       </div>
 
-      <div class="header-actions">
-        <button class="btn btn-outline" onclick="app.openCameraModal()" title="Kamera ile Fotoğraf Çek">
-          <span>📷</span> Kamera
+      <div class="header-tools">
+        <button class="icon-btn" id="btn-install" style="display: none;" onclick="app.installPWA()" title="Uygulamayı Yükle">
+          📥
         </button>
-        <button class="btn btn-gold" onclick="document.getElementById('file-input').click()" title="Cihazdan Fotoğraf Yükle">
-          <span>📁</span> Fotoğraf Seç
-        </button>
-        <button class="btn btn-outline" id="btn-install" style="display: none;" onclick="app.installPWA()" title="Uygulamayı Cihaza Yükle">
-          <span>📥</span> Yükle
-        </button>
-        <button class="icon-btn" onclick="app.showModal('modal-ios')" title="iPhone / iPad (iOS) Kurulum Kılavuzu">
+        <button class="icon-btn" onclick="app.showModal('modal-ios')" title="iOS / iPhone Yükleme Kılavuzu">
           📱
         </button>
-        <button class="icon-btn" id="btn-sound" onclick="app.toggleSound()" title="Kalem Ses Efekti Aç/Kapat">
+        <button class="icon-btn" id="btn-sound" onclick="app.toggleSound()" title="Sesi Aç/Kapat">
           🔊
-        </button>
-        <button class="icon-btn" onclick="app.showModal('modal-about')" title="Hakkında ve Geliştirici">
-          ℹ️
         </button>
       </div>
     </header>
 
-    <!-- Gizli Dosya Girişi -->
+    <!-- Gizli Dosya Seçici -->
     <input type="file" id="file-input" accept="image/*" style="display: none;" onchange="app.handleFileSelect(event)">
 
     <!-- Ana Çalışma Alanı -->
-    <main class="workspace-grid">
-      <!-- Sol: Tuval & Çizim Alanı -->
-      <section class="canvas-card">
-        <div class="canvas-toolbar">
-          <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <button class="btn btn-outline" id="btn-animate" onclick="app.playDrawingAnimation()" title="Ressam Çiziyor Animasyonunu İzle">
-              <span>🎬</span> Ressam Çiziyor
+    <main class="workspace">
+      <div class="stage-card">
+        <!-- 1. Boş Durum: Büyük Ekrana Oturan Butonlar -->
+        <div class="hero-upload" id="hero-upload">
+          <span class="hero-art-icon">🎨</span>
+          <h1 class="hero-heading">Fotoğrafını Karakaleme Dönüştür</h1>
+          <p class="hero-sub">Gerçek kurşun kalemle bembeyaz sanat kağıdına çizilmiş gibi tertemiz portre ve çizimler üretin.</p>
+
+          <div class="action-buttons-row">
+            <button class="btn-main btn-primary" onclick="app.openCamera()">
+              <span>📷</span> Fotoğraf Çek
             </button>
-            <span id="image-dimensions" style="font-size: 0.8rem; color: var(--text-dim);"></span>
+            <button class="btn-main btn-secondary" onclick="document.getElementById('file-input').click()">
+              <span>📁</span> Galeriden Seç
+            </button>
           </div>
 
-          <div style="display: flex; gap: 0.5rem;">
-            <button class="btn btn-gold" id="btn-download" onclick="app.downloadImage()" title="Yüksek Çözünürlüklü İndir">
-              <span>💾</span> HD İndir (PNG)
-            </button>
+          <div class="quick-samples">
+            <span style="font-size: 0.78rem; color: var(--text-muted); margin-right: 0.2rem;">Hızlı Test:</span>
+            <button class="sample-tag" onclick="app.loadSample('portrait')">👤 Portre</button>
+            <button class="sample-tag" onclick="app.loadSample('car')">🏎️ Araba</button>
+            <button class="sample-tag" onclick="app.loadSample('landscape')">🏔️ Manzara</button>
+            <button class="sample-tag" onclick="app.loadSample('animal')">🐱 Kedi</button>
           </div>
         </div>
 
-        <div class="canvas-viewport" id="drop-zone">
-          <!-- 1. Boş Durum (Fotoğraf Yükleme Alanı) -->
-          <div class="empty-state" id="empty-state" onclick="document.getElementById('file-input').click()">
-            <span class="empty-icon">🎨</span>
-            <h2 class="empty-title">Fotoğrafını Ressam Çizimine Dönüştür</h2>
-            <p class="empty-desc">Fotoğrafını buraya sürükleyip bırakabilir, galeriden seçebilir ya da kamerayla çekebilirsin.</p>
-            <button class="btn btn-gold" style="pointer-events: none;">Fotoğraf Yükle</button>
+        <!-- 2. Görsel Yüklendiğinde Açılan Çizim Alanı -->
+        <div class="stage-viewer" id="stage-viewer">
+          <canvas id="sketch-canvas"></canvas>
 
-            <!-- Hızlı Test Örnekleri -->
-            <div style="margin-top: 1.5rem;" onclick="event.stopPropagation();">
-              <span style="font-size: 0.82rem; color: var(--text-dim); display: block; margin-bottom: 0.5rem;">veya tek tıkla test et:</span>
-              <div class="sample-chips">
-                <button class="chip-btn" onclick="app.loadSample('portrait')">👤 Portre / İnsan</button>
-                <button class="chip-btn" onclick="app.loadSample('car')">🏎️ Spor Araba</button>
-                <button class="chip-btn" onclick="app.loadSample('landscape')">🏔️ Doğa & Manzara</button>
-                <button class="chip-btn" onclick="app.loadSample('animal')">🐱 Hayvan / Kedi</button>
-              </div>
-            </div>
+          <div class="before-layer" id="before-layer">
+            <img id="before-img" alt="Orijinal">
           </div>
 
-          <!-- 2. Karşılaştırma Kaydırıcısı (Split Viewer) -->
-          <div class="comparison-container" id="comparison-container">
-            <!-- Arka Plan: Karakalem Çizimi (Canvas) -->
-            <canvas id="sketch-canvas"></canvas>
-
-            <!-- Ön Katman: Orijinal Fotoğraf (Kırpılmış Genişlik) -->
-            <div class="image-before-wrapper" id="before-wrapper">
-              <img id="original-image" alt="Orijinal Fotoğraf">
-            </div>
-
-            <!-- Kaydırıcı Çubuğu -->
-            <div class="split-handle" id="split-handle">
-              <div class="split-knob">‹ ›</div>
-            </div>
-
-            <!-- Etiketler -->
-            <span class="view-label label-original">Orijinal</span>
-            <span class="view-label label-sketch">Karakalem</span>
+          <div class="split-line" id="split-line">
+            <div class="split-pin">‹ ›</div>
           </div>
 
-          <!-- 3. Ressam Çiziyor Animasyon Katmanı -->
-          <div class="drawing-overlay" id="drawing-overlay">
-            <div class="drawing-pencil-anim">✏️</div>
-            <div class="drawing-status-text" id="drawing-status">Eskiz hatları çiziliyor...</div>
-            <div class="drawing-bar-bg">
-              <div class="drawing-bar-fill" id="drawing-bar"></div>
-            </div>
-          </div>
+          <span class="pill-label pill-before">Orijinal</span>
+          <span class="pill-label pill-after">Karakalem</span>
         </div>
-      </section>
 
-      <!-- Sağ: Kontrol ve Ayar Paneli -->
-      <aside class="controls-card">
-        <!-- Sanatçı Stilleri (Presets) -->
-        <div>
-          <h3 class="panel-section-title"><span>🎨</span> Sanatçı Stili</h3>
-          <div class="presets-grid">
-            <button class="preset-btn active" onclick="app.setPreset('classic')" id="preset-classic">
-              <span class="preset-icon">✏️</span>
-              <span class="preset-name">Klasik 2B</span>
+        <!-- 3. Çizim Kontrolleri & Stiller -->
+        <div class="stage-controls" id="stage-controls">
+          <div class="style-pills">
+            <button class="style-pill active" id="pill-portrait" onclick="app.setStyle('portrait')">
+              🌟 Hediyelik Portre
             </button>
-            <button class="preset-btn" onclick="app.setPreset('hatch')" id="preset-hatch">
-              <span class="preset-icon">✒️</span>
-              <span class="preset-name">Çapraz Tarama</span>
+            <button class="style-pill" id="pill-sketch" onclick="app.setStyle('sketch')">
+              ✍️ Sanatçı Eskizi
             </button>
-            <button class="preset-btn" onclick="app.setPreset('charcoal')" id="preset-charcoal">
-              <span class="preset-icon">🖤</span>
-              <span class="preset-name">Füzen Kömür</span>
+            <button class="style-pill" id="pill-caricature" onclick="app.setStyle('caricature')">
+              🎭 Karikatür
             </button>
-            <button class="preset-btn" onclick="app.setPreset('sepia')" id="preset-sepia">
-              <span class="preset-icon">📜</span>
-              <span class="preset-name">Antik Sepya</span>
+          </div>
+
+          <div class="bottom-actions">
+            <button class="btn-main btn-secondary" onclick="app.resetToUpload()" style="max-width: 170px;">
+              <span>🔄</span> Yeni Fotoğraf
             </button>
-            <button class="preset-btn" onclick="app.setPreset('tinted')" id="preset-tinted" style="grid-column: 1 / -1;">
-              <span class="preset-icon">🎨</span>
-              <span class="preset-name">Hafif Renkli Eskiz</span>
+            <button class="btn-main btn-primary" onclick="app.downloadSketch()" style="max-width: 220px;">
+              <span>💾</span> Çizimi İndir
             </button>
           </div>
         </div>
-
-        <hr style="border: 0; border-top: 1px solid var(--glass-border);">
-
-        <!-- İnce Çizim Ayarları (Sliders) -->
-        <div>
-          <h3 class="panel-section-title"><span>⚙️</span> Kalem & Doku Ayarları</h3>
-
-          <!-- Kalem Sertliği -->
-          <div class="slider-group">
-            <div class="slider-label-row">
-              <span>Kalem Sertliği (Kontrast)</span>
-              <span class="slider-val" id="val-hardness">50%</span>
-            </div>
-            <input type="range" class="slider-input" id="slider-hardness" min="0" max="100" value="50" oninput="app.onSliderChange('hardness', this.value)">
-          </div>
-
-          <!-- Çizgi Kalınlığı -->
-          <div class="slider-group">
-            <div class="slider-label-row">
-              <span>Çizgi Kalınlığı (Hat Vurgusu)</span>
-              <span class="slider-val" id="val-strokeWeight">50%</span>
-            </div>
-            <input type="range" class="slider-input" id="slider-strokeWeight" min="10" max="100" value="50" oninput="app.onSliderChange('strokeWeight', this.value)">
-          </div>
-
-          <!-- Çapraz Tarama -->
-          <div class="slider-group">
-            <div class="slider-label-row">
-              <span>Çapraz Tarama (Hatching)</span>
-              <span class="slider-val" id="val-hatchIntensity">50%</span>
-            </div>
-            <input type="range" class="slider-input" id="slider-hatchIntensity" min="0" max="100" value="50" oninput="app.onSliderChange('hatchIntensity', this.value)">
-          </div>
-
-          <!-- Gölge Dağıtma -->
-          <div class="slider-group">
-            <div class="slider-label-row">
-              <span>Gölge Dağıtma (Füzen / Smudge)</span>
-              <span class="slider-val" id="val-smudgeAmount">50%</span>
-            </div>
-            <input type="range" class="slider-input" id="slider-smudgeAmount" min="0" max="100" value="50" oninput="app.onSliderChange('smudgeAmount', this.value)">
-          </div>
-
-          <!-- Kağıt Dokusu -->
-          <div class="slider-group">
-            <div class="slider-label-row">
-              <span>Canson Kağıt Greni</span>
-              <span class="slider-val" id="val-paperTexture">50%</span>
-            </div>
-            <input type="range" class="slider-input" id="slider-paperTexture" min="0" max="100" value="50" oninput="app.onSliderChange('paperTexture', this.value)">
-          </div>
-        </div>
-
-        <hr style="border: 0; border-top: 1px solid var(--glass-border);">
-
-        <!-- Sanatçı İmzası Seçeneği -->
-        <div class="toggle-row">
-          <span>✍️ Fatih PATIR İmzası Ekle</span>
-          <label class="switch">
-            <input type="checkbox" id="check-signature" checked onchange="app.onSignatureToggle(this.checked)">
-            <span class="switch-slider"></span>
-          </label>
-        </div>
-
-        <button class="btn btn-outline" onclick="app.resetSettings()" style="width: 100%; margin-top: auto;">
-          ↺ Ayarları Sıfırla
-        </button>
-      </aside>
+      </div>
     </main>
 
-    <!-- Alt Bilgi (Footer) -->
-    <footer class="footer-bar">
-      <div>
-        © 2026 <strong>Karakalem Atölyesi</strong> • Sanatçı & Geliştirici: 
-        <a href="https://fatihpatir.github.io/web" target="_blank" rel="noopener noreferrer" class="footer-link">Fatih PATIR</a>
+    <!-- Kamera Modalı -->
+    <div class="modal-backdrop" id="modal-camera">
+      <div class="modal-box" style="text-align: center;">
+        <button class="modal-close-btn" onclick="app.closeCamera()">✕</button>
+        <h3 style="color: #fff; margin-bottom: 0.75rem;">📷 Fotoğraf Çek</h3>
+        <div style="width: 100%; border-radius: var(--radius-md); overflow: hidden; background: #000; margin-bottom: 1rem;">
+          <video id="camera-video" autoplay playsinline style="width: 100%; height: auto; display: block;"></video>
+        </div>
+        <div style="display: flex; gap: 0.5rem; justify-content: center;">
+          <button class="btn-main btn-secondary" onclick="app.flipCamera()" style="max-width: 140px;">
+            🔄 Çevir
+          </button>
+          <button class="btn-main btn-primary" onclick="app.takeSnap()" style="max-width: 180px;">
+            📸 Çek ve Çiz
+          </button>
+        </div>
       </div>
-      <div>
-        <a href="https://fatihpatir.github.io/web" target="_blank" rel="noopener noreferrer" class="footer-link">
-          🌐 fatihpatir.github.io/web
-        </a>
+    </div>
+
+    <!-- iOS Kurulum Modalı -->
+    <div class="modal-backdrop" id="modal-ios">
+      <div class="modal-box">
+        <button class="modal-close-btn" onclick="app.hideModal('modal-ios')">✕</button>
+        <div style="text-align: center; margin-bottom: 1.25rem;">
+          <span style="font-size: 2.5rem;">📱</span>
+          <h3 style="color: #fff; margin-top: 0.3rem;">iPhone / iPad Uygulama Yükleme</h3>
+        </div>
+
+        <div class="guide-step">
+          <div class="step-badge">1</div>
+          <span>Safari'nin altındaki <strong>Paylaş (Share <span style="font-size: 1rem;">⬆️</span>)</strong> butonuna dokunun.</span>
+        </div>
+        <div class="guide-step">
+          <div class="step-badge">2</div>
+          <span>Açılan menüde <strong>"Ana Ekrana Ekle (➕)"</strong> seçeneğine tıklayın.</span>
+        </div>
+        <div class="guide-step">
+          <div class="step-badge">3</div>
+          <span>Sağ üstteki <strong>Ekle</strong> butonuna basarak uygulamayı yükleyin.</span>
+        </div>
+
+        <button class="btn-main btn-primary" onclick="app.hideModal('modal-ios')" style="width: 100%; margin-top: 0.75rem;">
+          Tamamdır
+        </button>
       </div>
+    </div>
+
+    <!-- Minimalist Alt Bilgi: Sadece Fatih PATIR -->
+    <footer class="app-footer">
+      <a href="https://fatihpatir.github.io/web" target="_blank" rel="noopener noreferrer" class="author-link">
+        Fatih PATIR
+      </a>
     </footer>
   </div>
 
-  <!-- MODAL: Kamera Çekimi -->
-  <div class="modal-overlay" id="modal-camera">
-    <div class="modal-content" style="max-width: 640px; text-align: center;">
-      <div class="modal-close" onclick="app.closeCameraModal()">✕</div>
-      <h2 style="color: var(--accent-gold); margin-bottom: 0.5rem;">📷 Fotoğraf Çek</h2>
-      <p style="color: var(--text-dim); margin-bottom: 1rem; font-size: 0.9rem;">Kameranızı kullanarak anında karakalem çizimi oluşturun.</p>
-      
-      <div style="position: relative; width: 100%; border-radius: var(--radius-md); overflow: hidden; background: #000; margin-bottom: 1rem;">
-        <video id="camera-stream" autoplay playsinline style="width: 100%; height: auto; display: block;"></video>
-      </div>
-
-      <div style="display: flex; gap: 0.75rem; justify-content: center;">
-        <button class="btn btn-outline" onclick="app.switchCameraFacing()">🔄 Kamerayı Çevir</button>
-        <button class="btn btn-gold" onclick="app.captureFromCamera()" style="padding: 0.75rem 2rem; font-size: 1rem;">
-          📸 Çek ve Çiz
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL: iOS (iPhone / iPad) Kurulum Kılavuzu -->
-  <div class="modal-overlay" id="modal-ios">
-    <div class="modal-content">
-      <div class="modal-close" onclick="app.hideModal('modal-ios')">✕</div>
-      <div style="text-align: center; margin-bottom: 1.25rem;">
-        <span style="font-size: 3rem; display: inline-block;">📱</span>
-        <h2 style="color: var(--accent-gold); margin-top: 0.3rem;">iPhone / iPad Uygulama Yükleme</h2>
-        <p style="color: var(--text-dim); font-size: 0.88rem;">Apple Safari üzerinden tek tıkla ana ekranınıza uygulama olarak ekleyin:</p>
-      </div>
-
-      <div class="ios-steps">
-        <div class="ios-step">
-          <div class="ios-step-num">1</div>
-          <div>
-            <strong>Safari ile Açın</strong>
-            <p style="font-size: 0.82rem; color: var(--text-dim);">Bu web sayfasını iPhone veya iPad'inizde <strong>Safari</strong> tarayıcısında açın.</p>
-          </div>
-        </div>
-
-        <div class="ios-step">
-          <div class="ios-step-num">2</div>
-          <div>
-            <strong>Paylaş Simgesine Dokunun</strong>
-            <p style="font-size: 0.82rem; color: var(--text-dim);">Safari'nin en altındaki ortada yer alan <strong>Paylaş (Share <span style="font-size: 1.1rem;">⬆️</span>)</strong> butonuna dokunun.</p>
-          </div>
-        </div>
-
-        <div class="ios-step">
-          <div class="ios-step-num">3</div>
-          <div>
-            <strong>"Ana Ekrana Ekle" Seçin</strong>
-            <p style="font-size: 0.82rem; color: var(--text-dim);">Açılan menüde aşağı kaydırarak <strong>"Ana Ekrana Ekle (Add to Home Screen ➕)"</strong> seçeneğine tıklayın.</p>
-          </div>
-        </div>
-
-        <div class="ios-step">
-          <div class="ios-step-num">4</div>
-          <div>
-            <strong>"Ekle" Butonuna Basın</strong>
-            <p style="font-size: 0.82rem; color: var(--text-dim);">Sağ üstteki <strong>Ekle</strong> butonuna bastığınızda Karakalem Atölyesi doğrudan telefonunuzun ana ekranına bir uygulama olarak eklenecek ve internetsiz çalışacaktır.</p>
-          </div>
-        </div>
-      </div>
-
-      <button class="btn btn-gold" onclick="app.hideModal('modal-ios')" style="width: 100%;">
-        Anladım, Harika!
-      </button>
-    </div>
-  </div>
-
-  <!-- MODAL: Hakkında ve Geliştirici Bilgisi -->
-  <div class="modal-overlay" id="modal-about">
-    <div class="modal-content">
-      <div class="modal-close" onclick="app.hideModal('modal-about')">✕</div>
-      <div style="text-align: center; margin-bottom: 1.5rem;">
-        <div class="brand-logo" style="margin: 0 auto 0.75rem auto; width: 56px; height: 56px; font-size: 2rem;">✏️</div>
-        <h2 style="color: var(--accent-gold);">Karakalem Atölyesi</h2>
-        <p style="color: var(--text-dim); font-size: 0.88rem;">Gerçekçi Kurşun Kalem & Kömür Çizim Stüdyosu</p>
-      </div>
-
-      <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.5rem; line-height: 1.7;">
-        <h4 style="color: var(--text-bright); margin-bottom: 0.5rem;">Proje Hakkında:</h4>
-        <p style="font-size: 0.88rem; color: var(--text-main);">
-          Bu uygulama sıradan ve yapay gri filtrelerin aksine; <strong>XDoG çok ölçekli kontur çıkarma</strong>, <strong>çapraz tarama darbeleri (cross-hatching)</strong>, <strong>füzen/grafit gölge dağıtma</strong> ve <strong>Canson dokulu resim kağıdı greni</strong> tekniklerini harmanlayarak bir ressamın elinden çıkmışçasına doğal ve sanatsal çizimler üretir.
-        </p>
-      </div>
-
-      <div style="background: var(--accent-gold-light); border: 1px solid var(--glass-border-gold); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.5rem; text-align: center;">
-        <span style="font-size: 0.85rem; color: var(--accent-gold); font-weight: 700; text-transform: uppercase;">Geliştirici & Sanatçı</span>
-        <h3 style="font-size: 1.4rem; font-weight: 800; color: #fff; margin: 0.25rem 0;">Fatih PATIR</h3>
-        <p style="font-size: 0.88rem; color: var(--text-dim); margin-bottom: 0.75rem;">Bilişim Teknolojileri Öğretmeni & Yazılım Geliştirici</p>
-        <a href="https://fatihpatir.github.io/web" target="_blank" rel="noopener noreferrer" class="btn btn-gold" style="display: inline-flex;">
-          🌐 Web Sitesini Ziyaret Et (fatihpatir.github.io/web) ↗
-        </a>
-      </div>
-
-      <p style="font-size: 0.8rem; color: var(--text-dim); text-align: center;">
-        %100 Yerel İşleme • Fotoğraflarınız sunucuya gönderilmez, tamamen cihazınızda işlenir.
-      </p>
-    </div>
-  </div>
-
-  <!-- Scriptler -->
   <script src="sketch-engine.js"></script>
   <script src="sample-images.js"></script>
   <script src="app.js"></script>

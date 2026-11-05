@@ -1,38 +1,40 @@
 /**
- * KARAKALEM ÇİZİM MOTORU (Realistic Graphite Sketch Engine)
- * XDoG (Extended Difference of Gaussians), Çapraz Tarama (Cross-Hatching),
- * Füzen Dağıtma (Smudge) ve Canson Kağıt Dokusu Sentezleyici.
+ * GERÇEKÇİ RESİM ATÖLYESİ KARAKALEM MOTORU (Realistic Portrait Pencil Engine)
+ * Yüklenen görselleri 1. ve 3. örnekteki gibi:
+ * - Arka planı temiz beyaz kağıda çeken,
+ * - Yüz ve teni pürüzsüzleştirip lekesiz bırakan,
+ * - Göz, kaş, dudak ve saç tellerini koyu kurşun kalemle (4B/6B) belirginleştiren,
+ * - Yumuşak füzen gölgeleriyle derinlik katan profesyonel algoritma.
+ * 
  * Geliştirici: Fatih PATIR (https://fatihpatir.github.io/web)
  */
 
 class SketchEngine {
   constructor() {
-    this.offCanvas = document.createElement('canvas');
-    this.offCtx = this.offCanvas.getContext('2d', { willReadFrequently: true });
+    this.canvas = document.createElement('canvas');
+    this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
   }
 
   /**
-   * Ana dönüştürme fonksiyonu
-   * @param {HTMLImageElement|HTMLCanvasElement} sourceImg 
+   * Ana Çizim Fonksiyonu
+   * @param {HTMLImageElement|HTMLCanvasElement} srcImg 
    * @param {Object} options 
    * @returns {HTMLCanvasElement}
    */
-  process(sourceImg, options = {}) {
+  process(srcImg, options = {}) {
     const {
-      style = 'classic',        // 'classic', 'hatch', 'charcoal', 'sepia', 'tinted'
-      hardness = 50,            // 0 - 100 (Kalem Sertliği / Kontrast)
-      strokeWeight = 50,        // 0 - 100 (Çizgi Kalınlığı)
-      hatchIntensity = 50,      // 0 - 100 (Tarama Yoğunluğu)
-      smudgeAmount = 50,        // 0 - 100 (Gölge Dağıtma)
-      paperTexture = 50,        // 0 - 100 (Kağıt Greni)
+      style = 'portrait',       // 'portrait' (Hediyelik Portre), 'sketch' (Sanatçı Eskizi), 'caricature' (Karikatür)
+      toneDepth = 50,           // 0 - 100 Gölgelendirme Derinliği
+      lineDarkness = 60,        // 0 - 100 Kalem Koyuluğu
+      paperWhiteness = 75,      // 0 - 100 Arka Plan Beyazlığı
       signature = true,         // Fatih PATIR imzası
-      maxDimension = 1920       // Performans ve kalite için maks boyut
+      maxDimension = 1800
     } = options;
 
-    let w = sourceImg.naturalWidth || sourceImg.width;
-    let h = sourceImg.naturalHeight || sourceImg.height;
+    let w = srcImg.naturalWidth || srcImg.width;
+    let h = srcImg.naturalHeight || srcImg.height;
 
-    // Boyutlandırma (Gerekirse en boy oranını koruyarak küçült)
+    // En boy oranını koruyarak optimize et
     if (w > maxDimension || h > maxDimension) {
       if (w > h) {
         h = Math.round((h * maxDimension) / w);
@@ -43,232 +45,229 @@ class SketchEngine {
       }
     }
 
-    this.offCanvas.width = w;
-    this.offCanvas.height = h;
-    this.offCtx.drawImage(sourceImg, 0, 0, w, h);
+    this.canvas.width = w;
+    this.canvas.height = h;
+    this.ctx.drawImage(srcImg, 0, 0, w, h);
 
-    const imgData = this.offCtx.getImageData(0, 0, w, h);
-    const pixels = imgData.data;
+    const imgData = this.ctx.getImageData(0, 0, w, h);
+    const pix = imgData.data;
     const len = w * h;
 
-    // 1. ADIM: Parlaklık Haritası ve Otomatik Kontrast (Luminance)
-    const lum = new Float32Array(len);
-    let minLum = 255, maxLum = 0;
+    // 1. ADIM: İnsan Gözüne Uygun Gri Tonlama & Parlaklık Analizi
+    const gray = new Float32Array(len);
+    let minG = 255, maxG = 0;
 
     for (let i = 0; i < len; i++) {
       const idx = i * 4;
-      const l = 0.299 * pixels[idx] + 0.587 * pixels[idx + 1] + 0.114 * pixels[idx + 2];
-      lum[i] = l;
-      if (l < minLum) minLum = l;
-      if (l > maxLum) maxLum = l;
+      // Perceptual Luminance
+      const val = 0.299 * pix[idx] + 0.587 * pix[idx + 1] + 0.114 * pix[idx + 2];
+      gray[i] = val;
+      if (val < minG) minG = val;
+      if (val > maxG) maxG = val;
     }
 
-    // Kontrast Gerdirme (Auto-Levels)
-    const range = Math.max(1, maxLum - minLum);
+    // Dinamik Kontrast Gerdirme (Auto-Levels)
+    const gRange = Math.max(1, maxG - minG);
     for (let i = 0; i < len; i++) {
-      lum[i] = Math.min(255, Math.max(0, ((lum[i] - minLum) / range) * 255));
+      gray[i] = ((gray[i] - minG) / gRange) * 255;
     }
 
-    // 2. ADIM: XDoG Çok Ölçekli Kenar ve Hat Çıkarma (Pencil Contours)
-    const sigma1 = 0.6 + (strokeWeight / 100) * 1.4;
-    const sigma2 = sigma1 * 1.6;
-    const blur1 = this.gaussianBlur(lum, w, h, sigma1);
-    const blur2 = this.gaussianBlur(lum, w, h, sigma2);
+    // 2. ADIM: Cilt Pürüzsüzleştirme (Bilateral / Yüzey Filtresi)
+    // Bu sayede yanaklar, alın ve ten tertemiz kalır; gereksiz kumlanma ve leke oluşmaz!
+    const smoothRadius = (style === 'portrait') ? 3 : 2;
+    const smoothSkin = this.surfaceBlur(gray, w, h, smoothRadius, 35);
 
-    const gamma = 0.95;
-    const phi = 10 + (hardness / 100) * 20; // Eşik dikliği
-    const epsilon = -0.05 + (hardness / 100) * 0.12;
+    // 3. ADIM: İnce Kurşun Kalem Konturları (Gözler, Dudaklar, Kaşlar, Saçlar)
+    // Geniş ve dar Gauss farkı ile hatları yakalama (XDoG)
+    const blurNarrow = this.boxBlur(gray, w, h, 1);
+    const blurWide = this.boxBlur(gray, w, h, (style === 'caricature') ? 4 : 2);
 
     const edges = new Float32Array(len);
+    const darkFactor = 0.5 + (lineDarkness / 100) * 0.9;
+
     for (let i = 0; i < len; i++) {
-      const u = blur1[i] - gamma * blur2[i];
-      if (u >= epsilon) {
-        edges[i] = 1.0;
+      // Kenar yoğunluğu
+      const diff = blurNarrow[i] - blurWide[i];
+      if (diff < -1) {
+        // Koyu kontur çizgisi (Göz bebeği, kirpik, saç telleri, dudak kıvrımları)
+        const intensity = Math.min(1.0, Math.abs(diff) / 18.0) * darkFactor;
+        edges[i] = 1.0 - intensity;
       } else {
-        edges[i] = 1.0 + Math.tanh(phi * (u - epsilon));
+        edges[i] = 1.0;
       }
     }
 
-    // 3. ADIM: Çapraz Tarama ve Gölgelendirme Deseni (Hatching Simulation)
-    const hatchScale = Math.max(2, Math.round(w / 350));
-    const hatchWeight = (hatchIntensity / 100);
-    const hatchLayer = new Float32Array(len);
+    // 4. ADIM: Arka Planı Temizleme & Beyaz Kağıt Yalıtımı (High-Key Paper Isolation)
+    // Açık tonları bembeyaz sanat kağıdına çek, sadece gölgeleri koru
+    const bgCutoff = 255 - (paperWhiteness / 100) * 110; // Eşik değeri
+
+    // Merkez Ağırlıklı Mercek (Vignette) - Kenarlara doğru hafif beyazlama
+    const cx = w / 2;
+    const cy = h / 2;
+    const maxDist = Math.sqrt(cx * cx + cy * cy);
+
+    // 5. ADIM: Çizim Katmanlarını Birleştirme
+    const outImg = this.ctx.createImageData(w, h);
+    const outPix = outImg.data;
+    const depthWeight = (toneDepth / 100);
 
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         const i = y * w + x;
-        const brightness = lum[i] / 255; // 0 (karanlık) - 1 (aydınlık)
-        let strokeVal = 1.0;
+        const idx = i * 4;
 
-        if (hatchWeight > 0.05) {
-          // 45 derece tarama (Orta tonlar)
-          const p1 = (x + y) % (hatchScale * 4);
-          const isLine1 = (p1 < hatchScale * 1.2);
+        // Merkezden uzaklık (hafif sanatsal kenar solması)
+        const dx = x - cx;
+        const dy = y - cy;
+        const distRatio = Math.sqrt(dx * dx + dy * dy) / maxDist;
+        const edgeFade = Math.min(1.0, distRatio * 1.1);
 
-          // 135 derece çapraz tarama (Koyu tonlar)
-          const p2 = (x - y + 10000) % (hatchScale * 4);
-          const isLine2 = (p2 < hatchScale * 1.2);
+        const edgeVal = edges[i]; // 0 (koyu hat) .. 1 (beyaz)
+        let toneVal = smoothSkin[i] / 255.0; // 0 (gölge) .. 1 (ışık)
 
-          // Dikey tarama (Derin gölgeler)
-          const p3 = x % (hatchScale * 4);
-          const isLine3 = (p3 < hatchScale * 1.2);
-
-          if (brightness < 0.75 && isLine1) {
-            strokeVal *= (0.4 + brightness * 0.6);
-          }
-          if (brightness < 0.45 && isLine2) {
-            strokeVal *= (0.3 + brightness * 0.7);
-          }
-          if (brightness < 0.22 && isLine3) {
-            strokeVal *= 0.35;
-          }
-
-          // Tarama ağırlığını ayarla
-          strokeVal = 1.0 - (1.0 - strokeVal) * hatchWeight;
+        // Arka planı uçurma ve teni aydınlatma
+        if (smoothSkin[i] > bgCutoff) {
+          const t = (smoothSkin[i] - bgCutoff) / (255 - bgCutoff);
+          toneVal = toneVal * (1 - t) + 1.0 * t; // Beyaza doğru aç
         }
 
-        hatchLayer[i] = strokeVal;
+        // Kenarlara doğru fırça hafiflemesi (vignette)
+        if (edgeFade > 0.65) {
+          const fadeFactor = (edgeFade - 0.65) / 0.35;
+          toneVal = toneVal * (1 - fadeFactor) + 1.0 * fadeFactor;
+        }
+
+        // Gölgelendirme derinliği
+        const shadow = 1.0 - (1.0 - toneVal) * (0.45 + depthWeight * 0.55);
+
+        // Nihai Kurşun Kalem Değeri: Kontur Çizgisi * Yumuşak Gölge
+        let pencil = edgeVal * shadow;
+
+        if (style === 'caricature') {
+          // Karikatür modu: Çizgiler daha kalın ve kontrastlı
+          pencil = Math.pow(pencil, 1.3);
+          if (edgeVal < 0.8) pencil *= 0.6; // Konturları iyice belirginleştir
+        } else if (style === 'sketch') {
+          // Sanatçı Eskizi modu: Saç ve hatlar daha keskin
+          if (edgeVal < 0.9) pencil = Math.min(pencil, edgeVal * 0.95);
+        }
+
+        // Doğal Resim Kağıdı Dokusu (Hafif granül)
+        const paperNoise = ((Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1) * 0.04;
+        pencil = Math.min(1.0, Math.max(0.0, pencil + paperNoise));
+
+        // Kurşun Kalem Grafit Rengi (Koyu grafit grisi: #1f2024 ile beyaz kağıt arası)
+        const graphiteGray = Math.round(pencil * 255);
+        
+        // Çok hafif sıcak/soğuk kurşun kalem ton dengesi
+        outPix[idx] = graphiteGray;         // R
+        outPix[idx + 1] = graphiteGray;     // G
+        outPix[idx + 2] = Math.min(255, graphiteGray + 1); // B (hafif grafit maviliği)
+        outPix[idx + 3] = 255;
       }
     }
 
-    // 4. ADIM: Füzen & Gölge Dağıtma Katmanı (Smudge / Tortillon)
-    const smudgeSigma = 2.0 + (smudgeAmount / 100) * 6.0;
-    const smudgedLum = this.gaussianBlur(lum, w, h, smudgeSigma);
+    this.ctx.putImageData(outImg, 0, 0);
 
-    // 5. ADIM: Canson Kağıt Greni ve Doku Üretimi (Paper Texture)
-    const grainFactor = (paperTexture / 100) * 0.22;
-    const grain = new Float32Array(len);
-    for (let i = 0; i < len; i++) {
-      // Mikro sürtünme pürüzü
-      const noise = ((Math.sin(i * 12.9898 + (i % w) * 78.233) * 43758.5453) % 1);
-      grain[i] = 1.0 - Math.abs(noise) * grainFactor;
-    }
-
-    // 6. ADIM: Katmanları Birleştirme ve Sanatçı Stilleri (Compositing)
-    const output = this.offCtx.createImageData(w, h);
-    const outPix = output.data;
-
-    // Renk tonları
-    const isSepia = (style === 'sepia');
-    const isTinted = (style === 'tinted');
-    const isCharcoal = (style === 'charcoal');
-
-    for (let i = 0; i < len; i++) {
-      const idx = i * 4;
-
-      // Temel ton birleşimi:
-      // Edge (XDoG) * Hatching * (Smudged Shadow) * Paper Grain
-      const edgeVal = edges[i];
-      const hatchVal = hatchLayer[i];
-      const smudgeVal = (smudgedLum[i] / 255);
-      const grainVal = grain[i];
-
-      // Kurşun Kalem Değeri (0 = Koyu Grafit, 1 = Beyaz Kağıt)
-      let graphite = edgeVal * hatchVal * (0.35 + smudgeVal * 0.65) * grainVal;
-
-      if (isCharcoal) {
-        // Kömür kalem stili: daha koyu ve yüksek kontrast
-        graphite = Math.pow(graphite, 1.4);
-        if (graphite < 0.45) graphite *= 0.65;
-      }
-
-      graphite = Math.min(1.0, Math.max(0.0, graphite));
-      const val255 = graphite * 255;
-
-      if (isTinted) {
-        // Hafif suluboya renkli karakalem
-        const origR = pixels[idx];
-        const origG = pixels[idx + 1];
-        const origB = pixels[idx + 2];
-        const tintStrength = 0.42;
-
-        outPix[idx] = Math.round(val255 * (1 - tintStrength) + (origR * graphite) * tintStrength);
-        outPix[idx + 1] = Math.round(val255 * (1 - tintStrength) + (origG * graphite) * tintStrength);
-        outPix[idx + 2] = Math.round(val255 * (1 - tintStrength) + (origB * graphite) * tintStrength);
-      } else if (isSepia) {
-        // Antik Parşömen Sepya Tonu
-        outPix[idx] = Math.min(255, Math.round(val255 * 1.05 + 18));      // R
-        outPix[idx + 1] = Math.min(255, Math.round(val255 * 0.92 + 10));  // G
-        outPix[idx + 2] = Math.min(255, Math.round(val255 * 0.78 + 4));   // B
-      } else {
-        // Doğal Kurşun Kalem Grafit Tonu (Hafif soğuk siyah)
-        const rVal = Math.round(val255 * 0.98);
-        const gVal = Math.round(val255 * 0.98);
-        const bVal = Math.round(val255 * 1.0);
-        outPix[idx] = rVal;
-        outPix[idx + 1] = gVal;
-        outPix[idx + 2] = bVal;
-      }
-
-      outPix[idx + 3] = 255; // Opaklık
-    }
-
-    this.offCtx.putImageData(output, 0, 0);
-
-    // 7. ADIM: İsteğe Bağlı Sanatçı İmzası (Fatih PATIR)
+    // 6. ADIM: İsteğe Bağlı Sanatçı İmzası
     if (signature) {
-      this.drawArtistSignature(w, h, isSepia);
+      this.drawSignature(w, h);
     }
 
-    return this.offCanvas;
+    return this.canvas;
   }
 
   /**
-   * Sağ alt köşeye kurşun kalemle atılmış gibi doğal imza
+   * Sağ alt köşeye kurşun kalemle atılmış zarif sanatçı imzası
    */
-  drawArtistSignature(w, h, isSepia = false) {
-    const ctx = this.offCtx;
-    const fontSize = Math.max(14, Math.round(w * 0.022));
+  drawSignature(w, h) {
+    const ctx = this.ctx;
+    const fontSize = Math.max(16, Math.round(w * 0.024));
     ctx.save();
-    ctx.font = `italic 600 ${fontSize}px "Caveat", "Brush Script MT", cursive, sans-serif`;
+    ctx.font = `italic 700 ${fontSize}px "Caveat", "Brush Script MT", cursive, sans-serif`;
     ctx.textAlign = 'right';
     ctx.textBaseline = 'bottom';
-    ctx.fillStyle = isSepia ? 'rgba(92, 64, 40, 0.75)' : 'rgba(40, 40, 45, 0.72)';
-    ctx.fillText('Fatih PATIR', w - (w * 0.04), h - (h * 0.03));
+    ctx.fillStyle = 'rgba(35, 35, 40, 0.75)';
+    ctx.fillText('Fatih PATIR', w - (w * 0.04), h - (h * 0.035));
     ctx.restore();
   }
 
   /**
-   * Hızlı 1D Ayrılabilir Gauss Bulanıklaştırma (Fast Separable Gaussian Blur)
+   * Hızlı Yüzey Bulanıklaştırma (Bilateral / Edge-Preserving Surface Blur)
+   * Cildi pürüzsüzleştirirken göz, burun, dudak gibi keskin sınırları korur.
    */
-  gaussianBlur(src, w, h, sigma) {
-    const radius = Math.ceil(sigma * 2.5);
-    const kernelSize = radius * 2 + 1;
-    const kernel = new Float32Array(kernelSize);
-    let sum = 0;
+  surfaceBlur(src, w, h, radius, threshold) {
+    const dest = new Float32Array(w * h);
+    const threshSq = threshold * threshold;
 
-    for (let i = 0; i < kernelSize; i++) {
-      const x = i - radius;
-      kernel[i] = Math.exp(-(x * x) / (2 * sigma * sigma));
-      sum += kernel[i];
+    for (let y = 0; y < h; y++) {
+      const yMin = Math.max(0, y - radius);
+      const yMax = Math.min(h - 1, y + radius);
+
+      for (let x = 0; x < w; x++) {
+        const xMin = Math.max(0, x - radius);
+        const xMax = Math.min(w - 1, x + radius);
+
+        const centerVal = src[y * w + x];
+        let sum = 0;
+        let weightSum = 0;
+
+        for (let ny = yMin; ny <= yMax; ny++) {
+          const rowOffset = ny * w;
+          for (let nx = xMin; nx <= xMax; nx++) {
+            const val = src[rowOffset + nx];
+            const diff = val - centerVal;
+            // Sadece benzer renkteki komşuları bulanıklaştır (kenarları bozma)
+            if (diff * diff < threshSq) {
+              sum += val;
+              weightSum += 1;
+            }
+          }
+        }
+
+        dest[y * w + x] = (weightSum > 0) ? (sum / weightSum) : centerVal;
+      }
     }
-    for (let i = 0; i < kernelSize; i++) kernel[i] /= sum;
+    return dest;
+  }
 
+  /**
+   * Hızlı Kutu Bulanıklaştırma (Fast Box Blur)
+   */
+  boxBlur(src, w, h, radius) {
     const temp = new Float32Array(w * h);
     const dest = new Float32Array(w * h);
 
-    // Yatay Geçiş
+    // Yatay
     for (let y = 0; y < h; y++) {
-      const yOffset = y * w;
+      const offset = y * w;
       for (let x = 0; x < w; x++) {
-        let acc = 0;
+        let sum = 0;
+        let count = 0;
         for (let k = -radius; k <= radius; k++) {
-          const px = Math.min(w - 1, Math.max(0, x + k));
-          acc += src[yOffset + px] * kernel[k + radius];
+          const px = x + k;
+          if (px >= 0 && px < w) {
+            sum += src[offset + px];
+            count++;
+          }
         }
-        temp[yOffset + x] = acc;
+        temp[offset + x] = sum / count;
       }
     }
 
-    // Dikey Geçiş
+    // Dikey
     for (let x = 0; x < w; x++) {
       for (let y = 0; y < h; y++) {
-        let acc = 0;
+        let sum = 0;
+        let count = 0;
         for (let k = -radius; k <= radius; k++) {
-          const py = Math.min(h - 1, Math.max(0, y + k));
-          acc += temp[py * w + x] * kernel[k + radius];
+          const py = y + k;
+          if (py >= 0 && py < h) {
+            sum += temp[py * w + x];
+            count++;
+          }
         }
-        dest[y * w + x] = acc;
+        dest[y * w + x] = sum / count;
       }
     }
 
@@ -276,5 +275,4 @@ class SketchEngine {
   }
 }
 
-// Global olarak dışa aktar
 window.SketchEngine = SketchEngine;
