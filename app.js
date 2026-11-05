@@ -9,8 +9,11 @@ class KarakalemApp {
     this.engine = new SketchEngine();
     this.currentImage = null;
     this.currentStyle = 'portrait'; // 'portrait', 'sketch', 'caricature'
+    this.lineIntensity = 65;
+    this.shadingDepth = 55;
     this.soundEnabled = localStorage.getItem('karakalem_sound') !== 'false';
     this.audioCtx = null;
+    this.renderTimer = null;
 
     // Split Slider
     this.splitPos = 0.5;
@@ -139,6 +142,8 @@ class KarakalemApp {
     const targetCanvas = document.getElementById('sketch-canvas');
     const result = this.engine.process(this.currentImage, {
       style: this.currentStyle,
+      lineIntensity: this.lineIntensity,
+      shadingDepth: this.shadingDepth,
       signature: true
     });
 
@@ -156,7 +161,40 @@ class KarakalemApp {
     const btn = document.getElementById(`pill-${style}`);
     if (btn) btn.classList.add('active');
 
+    // Stile göre varsayılan çizgi ayarları
+    if (style === 'portrait') {
+      this.lineIntensity = 65;
+      this.shadingDepth = 55;
+    } else if (style === 'sketch') {
+      this.lineIntensity = 80;
+      this.shadingDepth = 45;
+    } else if (style === 'caricature') {
+      this.lineIntensity = 90;
+      this.shadingDepth = 70;
+    }
+
+    document.getElementById('range-lines').value = this.lineIntensity;
+    document.getElementById('val-lines').textContent = `${this.lineIntensity}%`;
+    document.getElementById('range-shading').value = this.shadingDepth;
+    document.getElementById('val-shading').textContent = `${this.shadingDepth}%`;
+
     this.render();
+  }
+
+  onSliderChange(key, val) {
+    const intVal = parseInt(val, 10);
+    if (key === 'lineIntensity') {
+      this.lineIntensity = intVal;
+      document.getElementById('val-lines').textContent = `${intVal}%`;
+    } else if (key === 'shadingDepth') {
+      this.shadingDepth = intVal;
+      document.getElementById('val-shading').textContent = `${intVal}%`;
+    }
+
+    clearTimeout(this.renderTimer);
+    this.renderTimer = setTimeout(() => {
+      this.render();
+    }, 60);
   }
 
   resetToUpload() {
@@ -242,7 +280,7 @@ class KarakalemApp {
       }).then((stream) => {
         this.stream = stream;
         video.srcObject = stream;
-      }).catch((err) => {
+      }).catch(() => {
         alert('Kameraya erişilemedi.');
         this.closeCamera();
       });

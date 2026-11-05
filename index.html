@@ -94,6 +94,24 @@
             </button>
           </div>
 
+          <!-- İki İnce Canlı Çizim Ayarı (Çizgi ve Gölge) -->
+          <div class="mini-sliders-row">
+            <div class="mini-slider-col">
+              <div class="mini-slider-label">
+                <span>✏️ Kalem Çizgisi Vurgusu:</span>
+                <strong id="val-lines">65%</strong>
+              </div>
+              <input type="range" class="mini-range" id="range-lines" min="20" max="100" value="65" oninput="app.onSliderChange('lineIntensity', this.value)">
+            </div>
+            <div class="mini-slider-col">
+              <div class="mini-slider-label">
+                <span>🌫️ Gölge & Tarama:</span>
+                <strong id="val-shading">55%</strong>
+              </div>
+              <input type="range" class="mini-range" id="range-shading" min="10" max="100" value="55" oninput="app.onSliderChange('shadingDepth', this.value)">
+            </div>
+          </div>
+
           <div class="bottom-actions">
             <button class="btn-main btn-secondary" onclick="app.resetToUpload()" style="max-width: 170px;">
               <span>🔄</span> Yeni Fotoğraf
